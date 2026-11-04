@@ -5,48 +5,46 @@ PROJECT: PROFILE-BASED MATCHING ALGORITHM
 MODULE: Synthetic Dataset Generation
 
 Generates:
-1. users.csv
-2. feedback.csv
+    1. data/raw/users.csv
+    2. data/raw/feedback.csv
 
-Dataset characteristics:
-- 100 synthetic user profiles
-- 5 to 10 feedback interactions per user
-- Valid MBTI personality types
-- Professional and personal descriptions
-- Accept (1) / Reject (0) feedback
+Dataset:
+    - 100 synthetic user profiles
+    - 5 to 10 feedback interactions per user
+    - All 16 valid MBTI types
+    - Professional and personal descriptions
+    - Accept (1) / Reject (0) feedback
 
-All generated records are synthetic and intended
-for experimentation and academic evaluation.
+All records are synthetic and intended for academic
+experimentation and evaluation.
 """
 
 from pathlib import Path
 import random
+import re
+
 import pandas as pd
 
 
-# ==================================================
+# ==========================================================
 # 1. CONFIGURATION
-# ==================================================
+# ==========================================================
 
 RANDOM_SEED = 42
-
 TOTAL_USERS = 100
 
 MIN_INTERACTIONS = 5
 MAX_INTERACTIONS = 10
 
-random.seed(RANDOM_SEED)
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
 DATA_DIR = PROJECT_ROOT / "data" / "raw"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ==================================================
+# ==========================================================
 # 2. PROFILE DATA
-# ==================================================
+# ==========================================================
 
 FIRST_NAMES = [
     "Aarav", "Aditi", "Ananya", "Arjun", "Diya",
@@ -139,31 +137,27 @@ HOBBIES = [
 ]
 
 
-# ==================================================
+# ==========================================================
 # 3. PROFESSIONAL SUMMARY TEMPLATES
-# ==================================================
+# ==========================================================
 
 PROFESSIONAL_TEMPLATES = [
-
     (
         "A {profession} with {experience_duration} of experience "
         "working on {field}. Interested in building practical "
         "solutions and improving technical expertise. "
         "Currently focused on {goal}."
     ),
-
     (
         "Working as a {profession} with experience in {field}. "
         "Enjoys solving complex problems and collaborating with "
         "cross-functional teams. Career goal is {goal}."
     ),
-
     (
         "An aspiring {profession} passionate about {field}. "
-        "Has {experience_duration} of professional experience and "
-        "enjoys continuous learning. Interested in {goal}."
+        "Has {experience_duration} of professional experience "
+        "and enjoys continuous learning. Interested in {goal}."
     ),
-
     (
         "A technology professional specializing in {field}. "
         "Has {experience_duration} of experience as a {profession}. "
@@ -172,31 +166,27 @@ PROFESSIONAL_TEMPLATES = [
 ]
 
 
-# ==================================================
+# ==========================================================
 # 4. PERSONAL DESCRIPTION TEMPLATES
-# ==================================================
+# ==========================================================
 
 PERSONAL_TEMPLATES = [
-
     (
         "I enjoy learning new things and exploring technology. "
         "In my free time, I like {hobby1} and {hobby2}. "
         "I value teamwork, honesty, and meaningful conversations."
     ),
-
     (
-        "I am a curious and motivated person who enjoys "
-        "{hobby1}. I also spend time on {hobby2}. "
+        "I am a curious and motivated person who enjoys {hobby1}. "
+        "I also spend time on {hobby2}. "
         "I appreciate creativity, personal growth, and collaboration."
     ),
-
     (
         "I enjoy meeting people with different perspectives. "
         "My interests include {hobby1} and {hobby2}. "
-        "I believe in continuous improvement and maintaining a "
-        "positive attitude."
+        "I believe in continuous improvement and maintaining "
+        "a positive attitude."
     ),
-
     (
         "Outside work, I enjoy {hobby1} and {hobby2}. "
         "I like exchanging ideas, learning from others, "
@@ -205,79 +195,114 @@ PERSONAL_TEMPLATES = [
 ]
 
 
-# ==================================================
-# 5. GENERATE USER PROFILES
-# ==================================================
+# ==========================================================
+# 5. TEXT NORMALIZATION
+# ==========================================================
 
-def generate_users(total_users: int) -> pd.DataFrame:
-    """
-    Generate synthetic user profiles.
+def normalize_text(text: str) -> str:
+    """Normalize whitespace and punctuation spacing."""
 
-    Returns:
-        DataFrame containing user profile information.
-    """
+    text = str(text)
+
+    # Add missing spaces after sentence punctuation.
+    text = re.sub(
+        r"([.!?])(?=[A-Za-z])",
+        r"\1 ",
+        text
+    )
+
+    # Add missing spaces after commas.
+    text = re.sub(
+        r",(?=\S)",
+        ", ",
+        text
+    )
+
+    # Normalize repeated whitespace.
+    text = re.sub(r"\s+", " ", text)
+
+    # Remove spaces before punctuation.
+    text = re.sub(
+        r"\s+([.,!?])",
+        r"\1",
+        text
+    )
+
+    return text.strip()
+
+
+# ==========================================================
+# 6. GENERATE USER PROFILES
+# ==========================================================
+
+def generate_users(total_users: int, rng) -> pd.DataFrame:
+    """Generate synthetic user profiles."""
 
     users = []
 
     for user_number in range(1, total_users + 1):
 
-        # Generate basic personal information
-        first_name = random.choice(FIRST_NAMES)
+        first_name = rng.choice(FIRST_NAMES)
+        last_name = rng.choice(LAST_NAMES)
 
-        last_name = random.choice(LAST_NAMES)
+        profession = rng.choice(PROFESSIONS)
+        experience = rng.randint(0, 10)
 
-        profession = random.choice(PROFESSIONS)
+        if experience == 1:
+            experience_duration = "1 year"
+        else:
+            experience_duration = f"{experience} years"
 
-        experience = random.randint(0, 10)
+        field = rng.choice(INTEREST_OPTIONS)
+        career_goal = rng.choice(CAREER_GOALS)
 
-        # Correct singular and plural experience wording
-        experience_duration = (
-            f"{experience} year"
-            if experience == 1
-            else f"{experience} years"
+        # Generate professional summary.
+        professional_template = rng.choice(
+            PROFESSIONAL_TEMPLATES
         )
 
-        # Generate professional information
-        field = random.choice(INTEREST_OPTIONS)
-
-        career_goal = random.choice(CAREER_GOALS)
-
-        professional_summary = random.choice(
-            PROFESSIONAL_TEMPLATES
-        ).format(
+        professional_summary = professional_template.format(
             profession=profession,
             experience_duration=experience_duration,
             field=field,
             goal=career_goal
         )
 
-        # Generate personal information
-        hobby1, hobby2 = random.sample(HOBBIES, 2)
+        # Generate personal description.
+        hobby1, hobby2 = rng.sample(HOBBIES, 2)
 
-        about_me = random.choice(
+        personal_template = rng.choice(
             PERSONAL_TEMPLATES
-        ).format(
+        )
+
+        about_me = personal_template.format(
             hobby1=hobby1,
             hobby2=hobby2
         )
 
-        # Generate interests
-        interests = random.sample(
-            INTEREST_OPTIONS,
-            k=random.randint(3, 5)
+        # Normalize descriptions.
+        professional_summary = normalize_text(
+            professional_summary
         )
 
-        # Construct profile
+        about_me = normalize_text(about_me)
+
+        # Generate interests.
+        interests = rng.sample(
+            INTEREST_OPTIONS,
+            k=rng.randint(3, 5)
+        )
+
         user = {
             "user_id": f"U{user_number:03d}",
             "name": f"{first_name} {last_name}",
-            "age": random.randint(21, 40),
-            "location": random.choice(LOCATIONS),
+            "age": rng.randint(21, 40),
+            "location": rng.choice(LOCATIONS),
             "profession": profession,
             "experience_years": experience,
             "professional_summary": professional_summary,
             "about_me": about_me,
-            "mbti": random.choice(MBTI_TYPES),
+            "mbti": rng.choice(MBTI_TYPES),
             "interests": ", ".join(interests)
         }
 
@@ -286,20 +311,12 @@ def generate_users(total_users: int) -> pd.DataFrame:
     return pd.DataFrame(users)
 
 
-# ==================================================
-# 6. GENERATE FEEDBACK DATASET
-# ==================================================
+# ==========================================================
+# 7. GENERATE FEEDBACK DATASET
+# ==========================================================
 
-def generate_feedback(users: pd.DataFrame) -> pd.DataFrame:
-    """
-    Generate synthetic accept/reject feedback.
-
-    action:
-        1 = Accept
-        0 = Reject
-
-    Every user receives 5 to 10 interactions.
-    """
+def generate_feedback(users: pd.DataFrame, rng) -> pd.DataFrame:
+    """Generate synthetic accept/reject feedback."""
 
     feedback_records = []
 
@@ -307,28 +324,25 @@ def generate_feedback(users: pd.DataFrame) -> pd.DataFrame:
 
     for user_id in user_ids:
 
-        # Exclude the current user from possible matches
         possible_matches = [
             candidate
             for candidate in user_ids
             if candidate != user_id
         ]
 
-        interaction_count = random.randint(
+        interaction_count = rng.randint(
             MIN_INTERACTIONS,
             MAX_INTERACTIONS
         )
 
-        # Select unique matching candidates
-        selected_matches = random.sample(
+        selected_matches = rng.sample(
             possible_matches,
             k=interaction_count
         )
 
         for matched_user_id in selected_matches:
 
-            # Synthetic feedback distribution
-            action = random.choices(
+            action = rng.choices(
                 population=[1, 0],
                 weights=[0.65, 0.35],
                 k=1
@@ -343,20 +357,15 @@ def generate_feedback(users: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(feedback_records)
 
 
-# ==================================================
-# 7. VALIDATE GENERATED DATASETS
-# ==================================================
+# ==========================================================
+# 8. VALIDATE GENERATED DATASETS
+# ==========================================================
 
 def validate_datasets(
     users: pd.DataFrame,
     feedback: pd.DataFrame
 ) -> None:
-    """
-    Check important dataset quality requirements.
-
-    Raises:
-        ValueError if validation fails.
-    """
+    """Validate dataset quality before saving."""
 
     required_user_columns = [
         "user_id",
@@ -377,27 +386,33 @@ def validate_datasets(
         "action"
     ]
 
-    # Check required columns
+    # Check required columns.
     if not all(
         column in users.columns
         for column in required_user_columns
     ):
-        raise ValueError("Missing required user dataset columns.")
+        raise ValueError("Missing required user columns.")
 
     if not all(
         column in feedback.columns
         for column in required_feedback_columns
     ):
-        raise ValueError("Missing required feedback dataset columns.")
+        raise ValueError("Missing required feedback columns.")
 
-    # Check empty values
+    # Check number of profiles.
+    if len(users) != TOTAL_USERS:
+        raise ValueError(
+            f"Expected {TOTAL_USERS} users, found {len(users)}."
+        )
+
+    # Check missing values.
     if users[required_user_columns].isnull().any().any():
         raise ValueError("User dataset contains missing values.")
 
     if feedback[required_feedback_columns].isnull().any().any():
         raise ValueError("Feedback dataset contains missing values.")
 
-    # Check empty text fields
+    # Check empty text values.
     text_columns = [
         "name",
         "location",
@@ -413,33 +428,99 @@ def validate_datasets(
                 f"Empty text values found in {column}."
             )
 
-    # Check unique user IDs
+    # Check unique user IDs.
     if users["user_id"].duplicated().any():
         raise ValueError("Duplicate user IDs found.")
 
-    # Check valid MBTI values
+    # Check valid MBTI values.
     if not users["mbti"].isin(MBTI_TYPES).all():
         raise ValueError("Invalid MBTI personality type found.")
 
-    # Check valid feedback actions
+    # Check age and experience.
+    if not users["age"].between(21, 40).all():
+        raise ValueError("Invalid age values found.")
+
+    if not users["experience_years"].between(0, 10).all():
+        raise ValueError("Invalid experience values found.")
+
+    # Check description punctuation and known joined phrases.
+    invalid_phrases = [
+        "ofprofessional",
+        "yearof",
+        "yearsof",
+        "leadinginnovative",
+        "solvingcomplex",
+        "enjoyssolving",
+        "meaningfulconversations",
+        "buildingintelligent",
+        "softwaresolutions",
+        "exchangingideas",
+        "currentlyfocused",
+        "interestedin",
+        "careergoal"
+    ]
+
+    for column in ["professional_summary", "about_me"]:
+
+        if users[column].str.contains(
+            r"\s+[.,!?]",
+            regex=True
+        ).any():
+            raise ValueError(
+                f"Incorrect punctuation spacing in {column}."
+            )
+
+        if users[column].str.contains(
+            r"[.!?][A-Z]",
+            regex=True
+        ).any():
+            raise ValueError(
+                f"Missing sentence spacing in {column}."
+            )
+
+        for phrase in invalid_phrases:
+            if users[column].str.contains(
+                re.escape(phrase),
+                case=False,
+                regex=True
+            ).any():
+                raise ValueError(
+                    f"Possible joined words '{phrase}' found "
+                    f"in {column}."
+                )
+
+    # Check feedback actions.
     if not feedback["action"].isin([0, 1]).all():
         raise ValueError("Feedback action must be 0 or 1.")
 
-    # Check feedback references
+    # Check feedback references.
     valid_user_ids = set(users["user_id"])
 
     if not feedback["user_id"].isin(valid_user_ids).all():
-        raise ValueError("Unknown user ID found in feedback.")
+        raise ValueError("Unknown user ID in feedback.")
 
     if not feedback["matched_user_id"].isin(valid_user_ids).all():
-        raise ValueError("Unknown matched user ID found.")
+        raise ValueError("Unknown matched user ID in feedback.")
 
-    # Users cannot match themselves
-    if (feedback["user_id"] == feedback["matched_user_id"]).any():
+    # Check self-matching.
+    if (
+        feedback["user_id"] == feedback["matched_user_id"]
+    ).any():
         raise ValueError("Self-matching records found.")
 
-    # Check interaction count per user
+    # Check duplicate feedback pairs.
+    if feedback.duplicated(
+        subset=["user_id", "matched_user_id"]
+    ).any():
+        raise ValueError("Duplicate feedback records found.")
+
+    # Check interaction counts.
     interactions = feedback.groupby("user_id").size()
+
+    if len(interactions) != len(users):
+        raise ValueError(
+            "Every user must have feedback interactions."
+        )
 
     if not interactions.between(
         MIN_INTERACTIONS,
@@ -449,68 +530,50 @@ def validate_datasets(
             "Each user must have between 5 and 10 interactions."
         )
 
-    # Check duplicate feedback records
-    if feedback.duplicated(
-        subset=["user_id", "matched_user_id"]
-    ).any():
-        raise ValueError("Duplicate feedback interactions found.")
-
     print("\nAll dataset validation checks passed!")
 
 
-# ==================================================
-# 8. SAVE DATASETS
-# ==================================================
+# ==========================================================
+# 9. SAVE DATASETS
+# ==========================================================
 
 def main():
     """Execute the complete dataset generation pipeline."""
+
+    rng = random.Random(RANDOM_SEED)
 
     print("=" * 55)
     print("PROFILE-BASED MATCHING ALGORITHM")
     print("SYNTHETIC DATASET GENERATION")
     print("=" * 55)
 
-    # Generate users
     print("\nGenerating user profiles...")
+    users = generate_users(TOTAL_USERS, rng)
 
-    users = generate_users(TOTAL_USERS)
-
-    # Generate feedback
     print("Generating matching feedback...")
+    feedback = generate_feedback(users, rng)
 
-    feedback = generate_feedback(users)
-
-    # Validate before saving
     print("\nValidating datasets...")
-
     validate_datasets(users, feedback)
 
-    # Save datasets
     users_path = DATA_DIR / "users.csv"
-
     feedback_path = DATA_DIR / "feedback.csv"
 
+    # Save only after successful validation.
     users.to_csv(users_path, index=False)
-
     feedback.to_csv(feedback_path, index=False)
 
-    # Display results
     print("\n" + "=" * 55)
     print("DATASET GENERATION COMPLETED")
     print("=" * 55)
 
     print(f"\nUsers dataset: {users_path}")
-
     print(f"Feedback dataset: {feedback_path}")
 
-    print("\nDATASET SUMMARY")
-
-    print(f"Total users: {len(users)}")
-
+    print(f"\nTotal users: {len(users)}")
     print(f"Total feedback records: {len(feedback)}")
 
     print("\nFeedback distribution:")
-
     print(
         feedback["action"]
         .value_counts()
@@ -522,7 +585,6 @@ def main():
     )
 
     print("\nUsers dataset preview:")
-
     print(
         users[
             [
@@ -532,15 +594,18 @@ def main():
                 "experience_years",
                 "mbti"
             ]
-        ].head(5).to_string(index=False)
+        ].head().to_string(index=False)
     )
 
-    print("\nFeedback dataset preview:")
+    print("\nFirst five professional summaries:")
+    for _, row in users.head().iterrows():
+        print(row["user_id"], "-", row["professional_summary"])
 
-    print(feedback.head(5).to_string(index=False))
+    print("\nFirst five personal descriptions:")
+    for _, row in users.head().iterrows():
+        print(row["user_id"], "-", row["about_me"])
 
     print("\nInteractions per user:")
-
     print(
         feedback.groupby("user_id")
         .size()
@@ -550,9 +615,9 @@ def main():
     print("\nSynthetic dataset generation finished successfully.")
 
 
-# ==================================================
-# 9. PROGRAM ENTRY POINT
-# ==================================================
+# ==========================================================
+# 10. PROGRAM ENTRY POINT
+# ==========================================================
 
 if __name__ == "__main__":
     main()
