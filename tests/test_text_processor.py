@@ -124,3 +124,55 @@ def main():
 
 if __name__ == "__main__":
     main()
+# ============================================================
+# PYTEST TEST CASES
+# ============================================================
+
+def test_clean_text():
+    processor = TextProcessor()
+
+    result = processor.clean_text("HELLO, World!")
+
+    assert isinstance(result, str)
+    assert result == "hello world"
+
+
+def test_tokenize():
+    processor = TextProcessor()
+
+    result = processor.tokenize("machine learning python")
+
+    assert isinstance(result, list)
+    assert len(result) > 0
+
+
+def test_remove_stopwords():
+    processor = TextProcessor()
+
+    tokens = ["this", "machine", "is", "useful"]
+
+    result = processor.remove_stopwords(tokens)
+
+    assert isinstance(result, list)
+    assert "this" not in result
+    assert "is" not in result
+
+
+def test_lemmatize():
+    processor = TextProcessor()
+
+    result = processor.lemmatize(["running", "cars"])
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+
+
+def test_preprocess():
+    processor = TextProcessor()
+
+    result = processor.preprocess(
+        "Machine learning is useful for solving problems."
+    )
+
+    assert isinstance(result, str)
+    assert len(result) > 0
